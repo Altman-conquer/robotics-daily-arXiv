@@ -17,6 +17,17 @@ class ArxivSpider(scrapy.Spider):
     name = "arxiv"  # 爬虫名称
     allowed_domains = ["arxiv.org"]  # 允许爬取的域名
 
+    @staticmethod
+    def clean_text(texts):
+        return " ".join(text.strip() for text in texts if text and text.strip())
+
+    @staticmethod
+    def strip_descriptor(text, descriptor):
+        text = text.strip()
+        if text.startswith(descriptor):
+            return text[len(descriptor):].strip()
+        return text
+
     def parse(self, response):
         # 提取每篇论文的信息
         anchors = []
@@ -61,17 +72,62 @@ class ArxivSpider(scrapy.Spider):
                 # 检查论文分类是否与目标分类有交集
                 paper_categories = set(categories_in_paper)
                 if paper_categories.intersection(self.target_categories):
-                    yield {
-                        "id": arxiv_id,
-                        "categories": list(paper_categories),  # 添加分类信息用于调试
-                    }
+                    yield response.follow(
+                        abstract_link,
+                        callback=self.parse_abs,
+                        meta={
+                            "arxiv_id": arxiv_id,
+                            "categories": list(paper_categories),
+                        },
+                    )
                     self.logger.info(f"Found paper {arxiv_id} with categories {paper_categories}")
                 else:
                     self.logger.debug(f"Skipped paper {arxiv_id} with categories {paper_categories} (not in target {self.target_categories})")
             else:
                 # 如果无法获取分类信息，记录警告但仍然返回论文（保持向后兼容）
                 self.logger.warning(f"Could not extract categories for paper {arxiv_id}, including anyway")
-                yield {
-                    "id": arxiv_id,
-                    "categories": [],
-                }
+                yield response.follow(
+                    abstract_link,
+                    callback=self.parse_abs,
+                    meta={
+                        "arxiv_id": arxiv_id,
+                        "categories": [],
+                    },
+                )
+
+    def parse_abs(self, response):
+        arxiv_id = response.meta["arxiv_id"]
+
+        title = self.strip_descriptor(
+            self.clean_text(response.css("h1.title ::text").getall()),
+            "Title:",
+        )
+        summary = self.strip_descriptor(
+            self.clean_text(response.css("blockquote.abstract ::text").getall()),
+            "Abstract:",
+        )
+        authors = [
+            author.strip()
+            for author in response.css("div.authors a::text").getall()
+            if author.strip()
+        ]
+        comment = self.clean_text(response.xpath(
+            "//td[contains(concat(' ', normalize-space(@class), ' '), ' label ') "
+            "and normalize-space()='Comments:']/following-sibling::td[1]//text()"
+        ).getall())
+
+        subjects_text = self.clean_text(response.css("td.subjects ::text").getall())
+        categories = re.findall(r"\(([^)]+)\)", subjects_text)
+        if not categories:
+            categories = response.meta.get("categories", [])
+
+        yield {
+            "id": arxiv_id,
+            "pdf": f"https://arxiv.org/pdf/{arxiv_id}",
+            "abs": f"https://arxiv.org/abs/{arxiv_id}",
+            "authors": authors,
+            "title": title,
+            "categories": categories,
+            "comment": comment,
+            "summary": summary,
+        }

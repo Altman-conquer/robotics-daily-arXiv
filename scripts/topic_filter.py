@@ -15,9 +15,9 @@ from tqdm import tqdm
 
 
 DEFAULT_RESULT = {
-    "relevant": True,
+    "relevant": False,
     "confidence": 0.0,
-    "reason": "Classifier failed open; paper kept for manual review.",
+    "reason": "Classifier failed closed; paper excluded for strict topic filtering.",
     "topics": [],
 }
 
@@ -177,18 +177,18 @@ def classify_item(chain, item: dict, scope: str) -> dict:
         )
         result = parse_classifier_response(response)
         if result == DEFAULT_RESULT:
-            print(f"Using fail-open topic result for {item_id}: invalid classifier JSON", file=sys.stderr)
+            print(f"Using fail-closed topic result for {item_id}: invalid classifier JSON", file=sys.stderr)
         if (
             not result.get("relevant", True)
             and result.get("confidence", 0.0) < env_float("TOPIC_FILTER_MIN_CONFIDENCE", 0.65)
-            and env_bool("TOPIC_FILTER_KEEP_UNCERTAIN", True)
+            and env_bool("TOPIC_FILTER_KEEP_UNCERTAIN", False)
         ):
             result = dict(result)
             result["relevant"] = True
             result["reason"] = f"uncertain_keep: {result.get('reason', '')}"
         return result
     except Exception as e:
-        print(f"Topic classifier unexpected error for {item_id}: {e}", file=sys.stderr)
+        print(f"Topic classifier unexpected error for {item_id}; using fail-closed result: {e}", file=sys.stderr)
         return dict(DEFAULT_RESULT)
 
 

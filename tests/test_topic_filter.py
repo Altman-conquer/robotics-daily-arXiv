@@ -23,6 +23,11 @@ class FakeChain:
         return FakeResponse(self.content)
 
 
+class FailingChain:
+    def invoke(self, payload):
+        raise RuntimeError("rate limited")
+
+
 class TopicFilterParsingTest(unittest.TestCase):
     def test_parses_plain_classifier_json(self):
         result = topic_filter.parse_classifier_response(
@@ -44,11 +49,22 @@ class TopicFilterParsingTest(unittest.TestCase):
         self.assertTrue(result["relevant"])
         self.assertEqual(result["reason"], "robot manipulation")
 
-    def test_invalid_classifier_json_fails_open(self):
+    def test_invalid_classifier_json_fails_closed(self):
         result = topic_filter.parse_classifier_response("not json")
 
-        self.assertTrue(result["relevant"])
-        self.assertIn("failed open", result["reason"])
+        self.assertFalse(result["relevant"])
+        self.assertIn("failed closed", result["reason"])
+
+    @patch.dict("os.environ", {"TOPIC_FILTER_REQUEST_RETRIES": "0"})
+    def test_classifier_exception_fails_closed(self):
+        result = topic_filter.classify_item(
+            FailingChain(),
+            {"id": "x", "title": "Maybe embodied", "summary": "borderline paper"},
+            "embodied AI",
+        )
+
+        self.assertFalse(result["relevant"])
+        self.assertIn("failed closed", result["reason"])
 
     @patch.dict("os.environ", {"TOPIC_FILTER_KEEP_UNCERTAIN": "true", "TOPIC_FILTER_MIN_CONFIDENCE": "0.65"})
     def test_classifier_keeps_uncertain_rejection(self):

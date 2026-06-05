@@ -108,19 +108,19 @@ Use cron, Windows Task Scheduler, or any local scheduler. Example cron entry:
   your research scope before AI enhancement.
 - `TOPIC_FILTER_MODEL_NAME=...`: optional classifier model override. Empty means
   use `MODEL_NAME`.
-- `TOPIC_FILTER_MAX_WORKERS=6`: classifier concurrency. Keep it at or below
+- `TOPIC_FILTER_MAX_WORKERS=3`: classifier concurrency. Keep it at or below
   `AI_MAX_WORKERS` if the provider rate-limits.
 - `TOPIC_FILTER_MIN_CONFIDENCE=0.65`: low-confidence rejections are treated as
   uncertain.
-- `TOPIC_FILTER_KEEP_UNCERTAIN=true`: keep uncertain rejections to reduce false
-  negatives.
+- `TOPIC_FILTER_KEEP_UNCERTAIN=false`: reject low-confidence negatives for a
+  stricter topic feed.
 - `TOPIC_FILTER_SCOPE=...`: natural-language description of your research scope,
   e.g. embodied AI, VLA, world model/action, robot learning, manipulation,
   locomotion, navigation, autonomous driving agents, sim-to-real, physical AI,
   robot foundation models, and related benchmarks.
-- `TOPIC_FILTER_REQUEST_RETRIES=3`: retry each failed classifier request this
+- `TOPIC_FILTER_REQUEST_RETRIES=5`: retry each failed classifier request this
   many times.
-- `TOPIC_FILTER_REQUEST_STAGGER_SECONDS=0.5`: add small random start jitter per
+- `TOPIC_FILTER_REQUEST_STAGGER_SECONDS=1.5`: add small random start jitter per
   classifier request to reduce bursty traffic.
 - `PUSH_CHANGES=false`: run the pipeline without committing or pushing. Because
   generation happens in a temporary clone, set `KEEP_RUN_DIR=true` too if you

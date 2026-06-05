@@ -9,6 +9,7 @@ wheels/
 # Virtual environments
 .venv
 ai/.env
+.env.docker
 test/*
 .idea/
 .cursorrules

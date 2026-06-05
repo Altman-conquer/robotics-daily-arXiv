@@ -47,6 +47,9 @@ This repo will daily crawl arXiv papers about **cs.CV, cs.GR, cs.CL and cs.AI**,
 If you wish to crawl other arXiv categories, use other LLMs, or other languages, please follow the instructions.
 Otherwise, you can directly use this repo in https://dw-dengwei.github.io/daily-arXiv-ai-enhanced/. Please star it if you like :)
 
+> Local Docker runner: if you prefer running this project on your own machine
+> instead of GitHub Actions, see [docs/docker-local.md](docs/docker-local.md).
+
 **Instructions:**
 1. Fork this repo to your own account and delete my own information in [buy-me-a-coffee](./buy-me-a-coffee/README.md).
 2. Go to: your-own-repo -> Settings -> Secrets and variables -> Actions

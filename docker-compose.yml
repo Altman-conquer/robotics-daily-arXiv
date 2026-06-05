@@ -1,0 +1,18 @@
+services:
+  arxiv-runner:
+    build:
+      context: .
+    image: robotics-daily-arxiv:local
+    working_dir: /app
+    env_file:
+      - path: .env.docker
+        required: false
+    environment:
+      SSH_PRIVATE_KEY_FILE: /run/host-ssh/id_ed25519
+      SSH_PUBLIC_KEY_FILE: /run/host-ssh/id_ed25519.pub
+    volumes:
+      - .:/app:ro
+      - /mnt/c/Users/24761/.ssh/id_ed25519:/run/host-ssh/id_ed25519:ro
+      - /mnt/c/Users/24761/.ssh/id_ed25519.pub:/run/host-ssh/id_ed25519.pub:ro
+    stdin_open: true
+    tty: true

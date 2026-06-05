@@ -256,7 +256,14 @@ def main() -> int:
             "logs",
             os.path.basename(args.data).replace(".jsonl", "_topic_excluded.jsonl"),
         )
-    os.makedirs(os.path.dirname(excluded_path) or ".", exist_ok=True)
+    try:
+        os.makedirs(os.path.dirname(excluded_path) or ".", exist_ok=True)
+    except OSError:
+        excluded_path = os.path.join(
+            "/tmp",
+            os.path.basename(args.data).replace(".jsonl", "_topic_excluded.jsonl"),
+        )
+        os.makedirs(os.path.dirname(excluded_path), exist_ok=True)
 
     write_jsonl(args.data, kept)
     write_jsonl(excluded_path, excluded)

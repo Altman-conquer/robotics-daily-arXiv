@@ -82,6 +82,22 @@ class EnhanceJsonParsingTest(unittest.TestCase):
         response.json.return_value = {"sensitive": True}
         self.assertTrue(enhance.is_sensitive_content("paper summary"))
 
+    @patch("enhance.time.sleep")
+    @patch("enhance.random.uniform", return_value=0)
+    @patch.dict("os.environ", {"AI_REQUEST_RETRIES": "1", "AI_RETRY_BASE_SECONDS": "0.1"})
+    def test_ai_invoke_retries_transient_failure(self, _uniform, _sleep):
+        chain = Mock()
+        chain.invoke.side_effect = [RuntimeError("rate limited"), "ok"]
+
+        result = enhance.invoke_chain_with_retries(
+            chain,
+            {"language": "Chinese", "content": "summary"},
+            "paper-id",
+        )
+
+        self.assertEqual(result, "ok")
+        self.assertEqual(chain.invoke.call_count, 2)
+
 
 if __name__ == "__main__":
     unittest.main()

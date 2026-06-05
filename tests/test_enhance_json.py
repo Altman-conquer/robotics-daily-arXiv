@@ -2,6 +2,7 @@ import os
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 
 AI_DIR = Path(__file__).resolve().parents[1] / "ai"
@@ -57,6 +58,29 @@ class EnhanceJsonParsingTest(unittest.TestCase):
         )
 
         self.assertEqual(result, enhance.DEFAULT_AI_FIELDS)
+
+    @patch("enhance.requests.post")
+    def test_sensitive_checker_fails_open_on_request_error(self, post):
+        post.side_effect = RuntimeError("network unavailable")
+
+        self.assertFalse(enhance.is_sensitive_content("paper summary"))
+
+    @patch("enhance.requests.post")
+    def test_sensitive_checker_fails_open_on_non_200_status(self, post):
+        post.return_value = Mock(status_code=503)
+
+        self.assertFalse(enhance.is_sensitive_content("paper summary"))
+
+    @patch("enhance.requests.post")
+    def test_sensitive_checker_requires_explicit_true(self, post):
+        response = Mock(status_code=200)
+        response.json.return_value = {}
+        post.return_value = response
+
+        self.assertFalse(enhance.is_sensitive_content("paper summary"))
+
+        response.json.return_value = {"sensitive": True}
+        self.assertTrue(enhance.is_sensitive_content("paper summary"))
 
 
 if __name__ == "__main__":

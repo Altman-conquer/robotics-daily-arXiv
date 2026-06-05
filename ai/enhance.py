@@ -33,6 +33,8 @@ DEFAULT_AI_FIELDS = {
     "conclusion": "Conclusion extraction failed",
 }
 
+SENSITIVE_CHECK_URL = "https://spam.dw-dengwei.workers.dev"
+
 
 def message_content_to_text(response) -> str:
     """Normalize LangChain message content to text for local JSON parsing."""
@@ -91,30 +93,29 @@ def parse_args():
     parser.add_argument("--max_workers", type=int, default=1, help="Maximum number of parallel workers")
     return parser.parse_args()
 
-def process_single_item(chain, item: Dict, language: str) -> Dict:
-    def is_sensitive(content: str) -> bool:
-        """
-        调用 spam.dw-dengwei.workers.dev 接口检测内容是否包含敏感词。
-        返回 True 表示触发敏感词，False 表示未触发。
-        """
-        try:
-            resp = requests.post(
-                "https://spam.dw-dengwei.workers.dev",
-                json={"text": content},
-                timeout=5
-            )
-            if resp.status_code == 200:
-                result = resp.json()
-                # 约定接口返回 {"sensitive": true/false, ...}
-                return result.get("sensitive", True)
-            else:
-                # 如果接口异常，默认不触发敏感词
-                print(f"Sensitive check failed with status {resp.status_code}", file=sys.stderr)
-                return True
-        except Exception as e:
-            print(f"Sensitive check error: {e}", file=sys.stderr)
-            return True
+def is_sensitive_content(content: str) -> bool:
+    """
+    调用 spam.dw-dengwei.workers.dev 接口检测内容是否包含敏感词。
+    只有接口明确返回 sensitive=true 时才过滤；检查服务异常不应丢论文。
+    """
+    try:
+        resp = requests.post(
+            SENSITIVE_CHECK_URL,
+            json={"text": content},
+            timeout=5
+        )
+        if resp.status_code == 200:
+            result = resp.json()
+            # 约定接口返回 {"sensitive": true/false, ...}
+            return bool(result.get("sensitive", False))
 
+        print(f"Sensitive check failed with status {resp.status_code}", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"Sensitive check error: {e}", file=sys.stderr)
+        return False
+
+def process_single_item(chain, item: Dict, language: str) -> Dict:
     def check_github_code(content: str) -> Dict:
         """提取并验证 GitHub 链接"""
         code_info = {}
@@ -163,7 +164,7 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
         return code_info
 
     # 检查 summary 字段
-    if is_sensitive(item.get("summary", "")):
+    if is_sensitive_content(item.get("summary", "")):
         return None
 
     # 检测代码可用性
@@ -194,7 +195,7 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
 
     # 检查 AI 生成的所有字段
     for v in item.get("AI", {}).values():
-        if is_sensitive(str(v)):
+        if is_sensitive_content(str(v)):
             return None
     return item
 

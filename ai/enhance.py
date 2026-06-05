@@ -2,6 +2,8 @@ import os
 import json
 import sys
 import re
+import random
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict
 from queue import Queue
@@ -93,6 +95,41 @@ def parse_args():
     parser.add_argument("--max_workers", type=int, default=1, help="Maximum number of parallel workers")
     return parser.parse_args()
 
+def env_int(name: str, default: int) -> int:
+    try:
+        return int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
+
+def env_float(name: str, default: float) -> float:
+    try:
+        return float(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
+
+def invoke_chain_with_retries(chain, payload: Dict[str, str], item_id: str):
+    max_retries = max(0, env_int("AI_REQUEST_RETRIES", 3))
+    base_delay = max(0.1, env_float("AI_RETRY_BASE_SECONDS", 2.0))
+    max_delay = max(base_delay, env_float("AI_RETRY_MAX_SECONDS", 60.0))
+    stagger = max(0.0, env_float("AI_REQUEST_STAGGER_SECONDS", 0.0))
+
+    if stagger:
+        time.sleep(random.uniform(0, stagger))
+
+    for attempt in range(max_retries + 1):
+        try:
+            return chain.invoke(payload)
+        except Exception as e:
+            if attempt >= max_retries:
+                raise
+            delay = min(max_delay, base_delay * (2 ** attempt))
+            delay += random.uniform(0, min(base_delay, delay))
+            print(
+                f"AI request failed for {item_id}, retry {attempt + 1}/{max_retries} in {delay:.1f}s: {e}",
+                file=sys.stderr,
+            )
+            time.sleep(delay)
+
 def is_sensitive_content(content: str) -> bool:
     """
     调用 spam.dw-dengwei.workers.dev 接口检测内容是否包含敏感词。
@@ -176,10 +213,14 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
     default_ai_fields = DEFAULT_AI_FIELDS
     
     try:
-        response = chain.invoke({
-            "language": language,
-            "content": item['summary']
-        })
+        response = invoke_chain_with_retries(
+            chain,
+            {
+                "language": language,
+                "content": item['summary']
+            },
+            item.get("id", "unknown"),
+        )
         item['AI'] = parse_ai_json_response(response, default_ai_fields)
         if item['AI'] == default_ai_fields:
             print(f"Using default AI data for {item.get('id', 'unknown')}: invalid JSON response", file=sys.stderr)

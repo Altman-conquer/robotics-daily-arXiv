@@ -120,6 +120,13 @@ main() {
   export MODEL_NAME="${MODEL_NAME:-gpt-4o-mini}"
   export OPENAI_BASE_URL="${OPENAI_BASE_URL:-https://api.openai.com/v1}"
   export AI_MAX_WORKERS="${AI_MAX_WORKERS:-1}"
+  export AI_REQUEST_RETRIES="${AI_REQUEST_RETRIES:-3}"
+  export AI_RETRY_BASE_SECONDS="${AI_RETRY_BASE_SECONDS:-2}"
+  export AI_RETRY_MAX_SECONDS="${AI_RETRY_MAX_SECONDS:-60}"
+  export AI_REQUEST_STAGGER_SECONDS="${AI_REQUEST_STAGGER_SECONDS:-0}"
+  export TOPIC_FILTER_ENABLED="${TOPIC_FILTER_ENABLED:-false}"
+  export TOPIC_FILTER_MODEL_NAME="${TOPIC_FILTER_MODEL_NAME:-${MODEL_NAME}}"
+  export TOPIC_FILTER_MAX_WORKERS="${TOPIC_FILTER_MAX_WORKERS:-${AI_MAX_WORKERS}}"
   export PUSH_CHANGES="${PUSH_CHANGES:-true}"
   export TOKEN_GITHUB="${TOKEN_GITHUB:-${GIT_PUSH_TOKEN:-}}"
   export EMAIL="${EMAIL:-${GIT_USER_EMAIL:-}}"
@@ -161,6 +168,12 @@ main() {
   echo "  categories: ${CATEGORIES}"
   echo "  model: ${MODEL_NAME}"
   echo "  ai workers: ${AI_MAX_WORKERS}"
+  echo "  ai retries: ${AI_REQUEST_RETRIES}"
+  echo "  ai retry max seconds: ${AI_RETRY_MAX_SECONDS}"
+  echo "  ai request stagger seconds: ${AI_REQUEST_STAGGER_SECONDS}"
+  echo "  topic filter: ${TOPIC_FILTER_ENABLED} (llm)"
+  echo "  topic filter model: ${TOPIC_FILTER_MODEL_NAME}"
+  echo "  topic filter workers: ${TOPIC_FILTER_MAX_WORKERS}"
   echo "  push changes: ${PUSH_CHANGES}"
 
   log "Installing Python dependencies"
@@ -210,6 +223,13 @@ main() {
       fail "Unknown deduplication exit code: ${dedup_exit_code}"
       ;;
   esac
+
+  if [ "$TOPIC_FILTER_ENABLED" = "true" ]; then
+    log "Filtering papers by topic"
+    python scripts/topic_filter.py --data "data/${today}.jsonl"
+  else
+    log "Topic filter disabled; keeping all deduplicated papers"
+  fi
 
   log "Running AI enhancement"
   (

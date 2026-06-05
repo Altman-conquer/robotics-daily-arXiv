@@ -76,13 +76,14 @@ The container will:
 2. install/sync Python dependencies with `uv`;
 3. crawl arXiv for the UTC date;
 4. deduplicate against recent local data;
-5. run AI enhancement;
-6. convert to Markdown;
-7. update `assets/file-list.txt`;
-8. inject `js/auth-config.js` and `js/data-config.js`;
-9. commit config changes to `main`;
-10. commit data files to the `data` branch;
-11. push both branches.
+5. optionally filter papers by topic;
+6. run AI enhancement;
+7. convert to Markdown;
+8. update `assets/file-list.txt`;
+9. inject `js/auth-config.js` and `js/data-config.js`;
+10. commit config changes to `main`;
+11. commit data files to the `data` branch;
+12. push both branches.
 
 ## Scheduling
 
@@ -95,7 +96,32 @@ Use cron, Windows Task Scheduler, or any local scheduler. Example cron entry:
 ## Useful Overrides
 
 - `RUN_DATE=YYYY-MM-DD`: rerun for a specific date.
-- `AI_MAX_WORKERS=1`: lower concurrency if your model provider rate-limits.
+- `AI_MAX_WORKERS=6`: set AI enhancement concurrency. Increase carefully if
+  responses are slow; lower it if the provider rate-limits.
+- `AI_REQUEST_RETRIES=3`: retry each failed AI request this many times before
+  falling back to default fields.
+- `AI_RETRY_BASE_SECONDS=2`: initial retry backoff.
+- `AI_RETRY_MAX_SECONDS=60`: maximum retry backoff.
+- `AI_REQUEST_STAGGER_SECONDS=0.5`: add small random start jitter per request to
+  reduce bursty traffic.
+- `TOPIC_FILTER_ENABLED=true`: use an LLM to classify crawled papers against
+  your research scope before AI enhancement.
+- `TOPIC_FILTER_MODEL_NAME=...`: optional classifier model override. Empty means
+  use `MODEL_NAME`.
+- `TOPIC_FILTER_MAX_WORKERS=6`: classifier concurrency. Keep it at or below
+  `AI_MAX_WORKERS` if the provider rate-limits.
+- `TOPIC_FILTER_MIN_CONFIDENCE=0.65`: low-confidence rejections are treated as
+  uncertain.
+- `TOPIC_FILTER_KEEP_UNCERTAIN=true`: keep uncertain rejections to reduce false
+  negatives.
+- `TOPIC_FILTER_SCOPE=...`: natural-language description of your research scope,
+  e.g. embodied AI, VLA, world model/action, robot learning, manipulation,
+  locomotion, navigation, autonomous driving agents, sim-to-real, physical AI,
+  robot foundation models, and related benchmarks.
+- `TOPIC_FILTER_REQUEST_RETRIES=3`: retry each failed classifier request this
+  many times.
+- `TOPIC_FILTER_REQUEST_STAGGER_SECONDS=0.5`: add small random start jitter per
+  classifier request to reduce bursty traffic.
 - `PUSH_CHANGES=false`: run the pipeline without committing or pushing. Because
   generation happens in a temporary clone, set `KEEP_RUN_DIR=true` too if you
   want to inspect the generated files.

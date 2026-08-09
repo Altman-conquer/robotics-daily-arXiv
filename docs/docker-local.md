@@ -126,6 +126,9 @@ Use cron, Windows Task Scheduler, or any local scheduler. Example cron entry:
   many times.
 - `TOPIC_FILTER_REQUEST_STAGGER_SECONDS=1.5`: add small random start jitter per
   classifier request to reduce bursty traffic.
+- `SENSITIVE_CHECK_URL=https://...`: optional content-moderation endpoint. It is
+  disabled by default so the independent deployment does not depend on an
+  upstream-operated service.
 - `PUSH_CHANGES=false`: run the pipeline without committing or pushing. Because
   generation happens in a temporary clone, set `KEEP_RUN_DIR=true` too if you
   want to inspect the generated files.

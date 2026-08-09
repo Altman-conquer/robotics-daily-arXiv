@@ -60,16 +60,24 @@ class EnhanceJsonParsingTest(unittest.TestCase):
         self.assertEqual(result, enhance.DEFAULT_AI_FIELDS)
 
     @patch("enhance.requests.post")
+    def test_sensitive_checker_is_disabled_by_default(self, post):
+        with patch.dict("os.environ", {}, clear=True):
+            self.assertFalse(enhance.is_sensitive_content("paper summary"))
+        post.assert_not_called()
+
+    @patch("enhance.requests.post")
     def test_sensitive_checker_fails_open_on_request_error(self, post):
         post.side_effect = RuntimeError("network unavailable")
 
-        self.assertFalse(enhance.is_sensitive_content("paper summary"))
+        with patch.dict("os.environ", {"SENSITIVE_CHECK_URL": "https://example.test/check"}):
+            self.assertFalse(enhance.is_sensitive_content("paper summary"))
 
     @patch("enhance.requests.post")
     def test_sensitive_checker_fails_open_on_non_200_status(self, post):
         post.return_value = Mock(status_code=503)
 
-        self.assertFalse(enhance.is_sensitive_content("paper summary"))
+        with patch.dict("os.environ", {"SENSITIVE_CHECK_URL": "https://example.test/check"}):
+            self.assertFalse(enhance.is_sensitive_content("paper summary"))
 
     @patch("enhance.requests.post")
     def test_sensitive_checker_requires_explicit_true(self, post):
@@ -77,10 +85,12 @@ class EnhanceJsonParsingTest(unittest.TestCase):
         response.json.return_value = {}
         post.return_value = response
 
-        self.assertFalse(enhance.is_sensitive_content("paper summary"))
+        with patch.dict("os.environ", {"SENSITIVE_CHECK_URL": "https://example.test/check"}):
+            self.assertFalse(enhance.is_sensitive_content("paper summary"))
 
         response.json.return_value = {"sensitive": True}
-        self.assertTrue(enhance.is_sensitive_content("paper summary"))
+        with patch.dict("os.environ", {"SENSITIVE_CHECK_URL": "https://example.test/check"}):
+            self.assertTrue(enhance.is_sensitive_content("paper summary"))
 
     @patch("enhance.time.sleep")
     @patch("enhance.random.uniform", return_value=0)

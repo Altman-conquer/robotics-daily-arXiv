@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Embodied AI Daily</title>
+  <desc id="desc">An open research paper joined with a robotic circuit</desc>
+  <rect width="64" height="64" rx="12" fill="#102a43"/>
+  <path d="M12 17c8-2 14 0 20 5v28c-6-5-12-7-20-5V17Z" fill="#f7fafc"/>
+  <path d="M52 17c-8-2-14 0-20 5v28c6-5 12-7 20-5V17Z" fill="#d9e2ec"/>
+  <path d="M32 22v28" stroke="#0b7285" stroke-width="3"/>
+  <circle cx="42" cy="27" r="4" fill="#12b886"/>
+  <circle cx="44" cy="39" r="3" fill="#f59f00"/>
+  <path d="M42 31v3c0 2 2 2 2 5M38 27h-3" fill="none" stroke="#0b7285" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

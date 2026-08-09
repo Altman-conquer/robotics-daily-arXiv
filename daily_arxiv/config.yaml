@@ -4,4 +4,4 @@ arxiv:
     - cs.CL
 
 llm:
-  model_name: 'deepseek-chat'  # 使用的LLM模型
+  model_name: 'gpt-5.6-luna'  # 使用的LLM模型

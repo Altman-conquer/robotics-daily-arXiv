@@ -1,5 +1,5 @@
-如果您觉得这个项目有帮助你，可以考虑给dw-dengwei打赏
+# Support
 
-注意：如果您希望打赏其它Fork仓库而不是[dw-dengwei/daily-arXiv-ai-enhanced](https://github.com/dw-dengwei/daily-arXiv-ai-enhanced/tree/main) 请不要扫码
+Embodied AI Daily 当前不接受捐赠。若项目对你有帮助，可以通过 Star、Issue 或提交改进来支持项目。
 
-![code](./code.jpg)
+目录中的历史图片不代表本项目当前的收款方式，请勿据此付款。

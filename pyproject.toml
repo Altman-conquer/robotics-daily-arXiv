@@ -1,10 +1,9 @@
 [project]
-name = "daily-arxiv"
+name = "embodied-ai-daily"
 version = "0.1.0"
-description = "Daily crawl arXiv papers and use LLMs to summarize them"
+description = "Daily embodied AI and robotics paper curation with LLM-assisted analysis"
 authors = [
-    {name = "Wei Deng", email = "dw-dengwei@outlook.com"},
-    {name = "Jian Guan", email = "jianguanthu@gmail.com"},
+    {name = "Altman-conquer"},
 ]
 readme = "README.md"
 requires-python = ">=3.12"

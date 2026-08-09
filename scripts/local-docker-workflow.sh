@@ -117,8 +117,8 @@ main() {
 
   export LANGUAGE="${LANGUAGE:-Chinese}"
   export CATEGORIES="${CATEGORIES:-cs.CV,cs.CL}"
-  export MODEL_NAME="${MODEL_NAME:-gpt-4o-mini}"
-  export REASONING_EFFORT="${REASONING_EFFORT:-}"
+  export MODEL_NAME="${MODEL_NAME:-gpt-5.6-luna}"
+  export REASONING_EFFORT="${REASONING_EFFORT:-medium}"
   export OPENAI_BASE_URL="${OPENAI_BASE_URL:-https://api.openai.com/v1}"
   export AI_MAX_WORKERS="${AI_MAX_WORKERS:-1}"
   export AI_REQUEST_RETRIES="${AI_REQUEST_RETRIES:-3}"

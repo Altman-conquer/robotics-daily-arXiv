@@ -201,7 +201,7 @@ def main() -> int:
         print("Topic filter disabled; keeping all papers", file=sys.stderr)
         return 0
 
-    model_name = os.environ.get("TOPIC_FILTER_MODEL_NAME") or os.environ.get("MODEL_NAME", "gpt-4o-mini")
+    model_name = os.environ.get("TOPIC_FILTER_MODEL_NAME") or os.environ.get("MODEL_NAME", "gpt-5.6-luna")
     max_workers = max(1, env_int("TOPIC_FILTER_MAX_WORKERS", env_int("AI_MAX_WORKERS", 1)))
     scope = os.environ.get(
         "TOPIC_FILTER_SCOPE",

@@ -196,12 +196,14 @@ header {
 
 .logo-image {
   height: 36px;
-  width: auto;
+  width: 36px;
+  border-radius: 8px;
 }
 
 .site-title {
   font-size: 18px;
   font-weight: 600;
+  letter-spacing: 0;
   background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1315,6 +1317,12 @@ input:checked + .toggle-slider:before {
   
   .date-picker-content {
     width: 95%;
+  }
+}
+
+@media (max-width: 600px) {
+  .site-title {
+    display: none;
   }
 }
 

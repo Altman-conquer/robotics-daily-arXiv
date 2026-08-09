@@ -35,9 +35,6 @@ DEFAULT_AI_FIELDS = {
     "conclusion": "Conclusion extraction failed",
 }
 
-SENSITIVE_CHECK_URL = "https://spam.dw-dengwei.workers.dev"
-
-
 def message_content_to_text(response) -> str:
     """Normalize LangChain message content to text for local JSON parsing."""
     content = getattr(response, "content", response)
@@ -132,12 +129,16 @@ def invoke_chain_with_retries(chain, payload: Dict[str, str], item_id: str):
 
 def is_sensitive_content(content: str) -> bool:
     """
-    调用 spam.dw-dengwei.workers.dev 接口检测内容是否包含敏感词。
+    调用可选的外部接口检测内容是否包含敏感词。
     只有接口明确返回 sensitive=true 时才过滤；检查服务异常不应丢论文。
     """
+    sensitive_check_url = os.environ.get("SENSITIVE_CHECK_URL", "").strip()
+    if not sensitive_check_url:
+        return False
+
     try:
         resp = requests.post(
-            SENSITIVE_CHECK_URL,
+            sensitive_check_url,
             json={"text": content},
             timeout=5
         )
@@ -296,7 +297,7 @@ def process_all_items(data: List[Dict], model_name: str, language: str, max_work
 
 def main():
     args = parse_args()
-    model_name = os.environ.get("MODEL_NAME", 'deepseek-chat')
+    model_name = os.environ.get("MODEL_NAME", 'gpt-5.6-luna')
     language = os.environ.get("LANGUAGE", 'Chinese')
 
     # 检查并删除目标文件

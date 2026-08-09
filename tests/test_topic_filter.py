@@ -29,6 +29,13 @@ class FailingChain:
 
 
 class TopicFilterParsingTest(unittest.TestCase):
+    def test_prompt_defines_software_agents_as_hard_negatives(self):
+        prompt = topic_filter.SYSTEM_PROMPT.lower()
+
+        self.assertIn("mobile-gui", prompt)
+        self.assertIn("software-only agents", prompt)
+        self.assertIn("physical body", prompt)
+
     def test_parses_plain_classifier_json(self):
         result = topic_filter.parse_classifier_response(
             '{"relevant": false, "confidence": 0.95, "reason": "generic image generation", "topics": ["CV"]}'

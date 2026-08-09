@@ -34,9 +34,23 @@ Keep a paper if it is substantially relevant to embodied intelligence, including
 - embodied agents, physical AI, sim-to-real, robot policy learning, visuomotor control, affordance learning;
 - autonomous driving or mobile agents when the paper is about embodied perception, planning, control, or action.
 
-Reject a paper if it is mainly about generic computer vision, NLP, LLM reasoning, optimization, theory,
-image/video generation, retrieval, datasets, security, medicine, or generic reinforcement learning without a
-clear embodied agent, robot, physical action, control, or world-modeling connection.
+Use a strict definition of embodied agent: it must perceive and act through a physical body, robot, vehicle,
+or a physics-grounded 3D environment used to train or evaluate such behavior. A paper must contain direct
+evidence of that connection in its title, abstract, categories, or experiments; do not keep it merely because
+its method could be useful to robotics later.
+
+Hard exclusions, even when the paper uses words such as agent, action, policy, control, or world model:
+- web, search, code, API, mobile-GUI, desktop, and other software-only agents;
+- video-game agents without an explicit robot or established embodied-navigation/manipulation benchmark;
+- generic multi-agent orchestration, LLM tool use, automated scientific instruments, and agentic lab workflows;
+- industrial process control without a robot, mobile platform, manipulator, or learned embodied policy;
+- passive surveillance or traffic analytics not used onboard an autonomous agent for planning or control;
+- generic computer vision, NLP, LLM reasoning, optimization, theory, image/video/3D generation, retrieval,
+  datasets, security, or generic reinforcement learning without a clear physical agent or embodied benchmark.
+
+World-model papers are relevant only when they model physical dynamics or action consequences for embodied
+prediction, planning, or control. Scene-generation papers are relevant only when they directly build or
+evaluate physically constrained environments for robot or embodied-agent training.
 
 Return only a valid JSON object with this schema:
 {{"relevant": true/false, "confidence": 0.0-1.0, "reason": "one short sentence", "topics": ["short topic label"]}}

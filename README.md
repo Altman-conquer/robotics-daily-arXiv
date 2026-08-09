@@ -58,6 +58,8 @@ GitHub Actions 工作流每天北京时间 `09:30` 自动执行：
 
 在 Actions 页面选择 `Embodied AI Daily` 可手动运行。当天数据已经存在时默认跳过；需要完整重跑时启用 `force_reprocess`。
 
+新站点需要补历史数据时，可在 Actions 页面手动运行 `Backfill Embodied AI Papers`。开始和结束日期留空时，默认回填截至昨天的最近 30 个自然日；任务会按 5 天拆分，最多同时处理两个分块，所有分块成功后统一发布到 `data` 分支。历史数据按 arXiv 的首次提交日期归档，而每日任务按抓取日期归档，因此两者的日期语义略有不同；发布前会按论文 ID 与已有数据去重。
+
 本地 Docker 仅作为 GitHub Actions 不可用时的后备方案，配置与运行方式见 [docs/docker-local.md](docs/docker-local.md)。密钥文件 `.env.docker.local` 已被 Git 忽略，不应提交到仓库。
 
 ## 数据与免责声明

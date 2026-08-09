@@ -1,0 +1,249 @@
+name: Backfill Embodied AI Papers
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: Start date (UTC, YYYY-MM-DD); blank means 29 days before end
+        required: false
+        type: string
+      end_date:
+        description: End date (UTC, YYYY-MM-DD); blank means yesterday
+        required: false
+        type: string
+      chunk_days:
+        description: Calendar days per processing job
+        required: false
+        default: "5"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      start_date: ${{ steps.range.outputs.start_date }}
+      end_date: ${{ steps.range.outputs.end_date }}
+      matrix: ${{ steps.range.outputs.matrix }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7.0.1
+
+      - name: Resolve and validate date range
+        id: range
+        env:
+          INPUT_START_DATE: ${{ inputs.start_date }}
+          INPUT_END_DATE: ${{ inputs.end_date }}
+          INPUT_CHUNK_DAYS: ${{ inputs.chunk_days }}
+        run: |
+          set -Eeuo pipefail
+          end_date=${INPUT_END_DATE:-$(date -u -d yesterday '+%Y-%m-%d')}
+          start_date=${INPUT_START_DATE:-$(date -u -d "${end_date} -29 days" '+%Y-%m-%d')}
+          chunk_days=${INPUT_CHUNK_DAYS:-5}
+          matrix=$(python scripts/fetch_arxiv_history.py \
+            --start-date "$start_date" \
+            --end-date "$end_date" \
+            --chunk-days "$chunk_days" \
+            --print-matrix)
+          echo "start_date=$start_date" >> "$GITHUB_OUTPUT"
+          echo "end_date=$end_date" >> "$GITHUB_OUTPUT"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "Backfill range: $start_date through $end_date"
+          echo "Matrix: $matrix"
+
+  process:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    env:
+      PYTHONUNBUFFERED: "1"
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+      TOKEN_GITHUB: ${{ github.token }}
+      LANGUAGE: ${{ vars.LANGUAGE || 'Chinese' }}
+      CATEGORIES: ${{ vars.CATEGORIES || 'cs.RO,cs.AI,cs.LG,cs.CV' }}
+      MODEL_NAME: ${{ vars.MODEL_NAME || 'gpt-5.6-luna' }}
+      REASONING_EFFORT: ${{ vars.REASONING_EFFORT || 'medium' }}
+      AI_MAX_WORKERS: ${{ vars.BACKFILL_AI_MAX_WORKERS || '4' }}
+      AI_REQUEST_RETRIES: ${{ vars.AI_REQUEST_RETRIES || '3' }}
+      AI_RETRY_BASE_SECONDS: ${{ vars.AI_RETRY_BASE_SECONDS || '2' }}
+      AI_RETRY_MAX_SECONDS: ${{ vars.AI_RETRY_MAX_SECONDS || '60' }}
+      AI_REQUEST_STAGGER_SECONDS: ${{ vars.AI_REQUEST_STAGGER_SECONDS || '0.5' }}
+      TOPIC_FILTER_ENABLED: ${{ vars.TOPIC_FILTER_ENABLED || 'true' }}
+      TOPIC_FILTER_MODEL_NAME: ${{ vars.TOPIC_FILTER_MODEL_NAME || vars.MODEL_NAME || 'gpt-5.6-luna' }}
+      TOPIC_FILTER_MAX_WORKERS: ${{ vars.BACKFILL_TOPIC_FILTER_MAX_WORKERS || '2' }}
+      TOPIC_FILTER_MIN_CONFIDENCE: ${{ vars.TOPIC_FILTER_MIN_CONFIDENCE || '0.65' }}
+      TOPIC_FILTER_KEEP_UNCERTAIN: ${{ vars.TOPIC_FILTER_KEEP_UNCERTAIN || 'false' }}
+      TOPIC_FILTER_REQUEST_RETRIES: ${{ vars.TOPIC_FILTER_REQUEST_RETRIES || '3' }}
+      TOPIC_FILTER_REQUEST_STAGGER_SECONDS: ${{ vars.TOPIC_FILTER_REQUEST_STAGGER_SECONDS || '0.5' }}
+      SENSITIVE_CHECK_URL: ${{ vars.SENSITIVE_CHECK_URL }}
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+
+      - name: Install Python and dependencies
+        run: |
+          uv python install 3.12
+          uv sync --frozen
+
+      - name: Validate configuration
+        run: |
+          test -n "$OPENAI_API_KEY" || { echo "OPENAI_API_KEY is not configured" >&2; exit 1; }
+          test -n "$OPENAI_BASE_URL" || { echo "OPENAI_BASE_URL is not configured" >&2; exit 1; }
+          printf 'Chunk: %s through %s\nModel: %s (%s)\nWorkers: topic=%s, analysis=%s\n' \
+            '${{ matrix.start }}' '${{ matrix.end }}' "$MODEL_NAME" "$REASONING_EFFORT" \
+            "$TOPIC_FILTER_MAX_WORKERS" "$AI_MAX_WORKERS"
+
+      - name: Load existing published data
+        run: |
+          set -Eeuo pipefail
+          mkdir -p existing-data
+          if git ls-remote --exit-code --heads origin data >/dev/null 2>&1; then
+            git fetch --no-tags origin data:refs/remotes/origin/data
+            git archive origin/data data | tar -x -C existing-data
+          fi
+
+      - name: Fetch historical arXiv metadata
+        run: |
+          uv run python scripts/fetch_arxiv_history.py \
+            --start-date '${{ matrix.start }}' \
+            --end-date '${{ matrix.end }}' \
+            --categories "$CATEGORIES" \
+            --output-dir data \
+            --exclude-dir existing-data/data \
+            --skip-completed-dir existing-data/data \
+            --language "$LANGUAGE"
+
+      - name: Filter and analyze papers
+        run: |
+          set -Eeuo pipefail
+          summary="backfill-${{ matrix.start }}-${{ matrix.end }}.md"
+          mapfile -t raw_files < <(find data -maxdepth 1 -type f -name '????-??-??.jsonl' | sort)
+          {
+            echo "## Backfill ${{ matrix.start }} through ${{ matrix.end }}"
+            echo
+            echo "| Date | Candidates | Retained | Default summaries |"
+            echo "| --- | ---: | ---: | ---: |"
+          } > "$summary"
+
+          for raw_file in "${raw_files[@]}"; do
+            run_date=$(basename "$raw_file" .jsonl)
+            candidates=$(wc -l < "$raw_file")
+            TOPIC_FILTER_EXCLUDED_PATH="logs/${run_date}_topic_excluded.jsonl" \
+              uv run python scripts/topic_filter.py --data "$raw_file"
+            retained=$(wc -l < "$raw_file")
+
+            (
+              cd ai
+              uv run python enhance.py \
+                --data "../$raw_file" \
+                --max_workers "$AI_MAX_WORKERS"
+            )
+            enhanced="data/${run_date}_AI_enhanced_${LANGUAGE}.jsonl"
+            test -s "$enhanced" || { echo "No enhanced data for $run_date" >&2; exit 1; }
+
+            (
+              cd to_md
+              uv run python convert.py --data "../$enhanced"
+            )
+            test -s "data/${run_date}.md" || { echo "No Markdown data for $run_date" >&2; exit 1; }
+
+            defaults=$(uv run python - "$enhanced" <<'PY'
+          import json
+          import sys
+
+          count = 0
+          with open(sys.argv[1], encoding="utf-8") as handle:
+              for line in handle:
+                  item = json.loads(line)
+                  if item.get("AI", {}).get("tldr") == "Summary generation failed":
+                      count += 1
+          print(count)
+          PY
+            )
+            echo "| $run_date | $candidates | $retained | $defaults |" >> "$summary"
+          done
+
+          if [ "${#raw_files[@]}" -eq 0 ]; then
+            echo "| No unpublished dates in this chunk | 0 | 0 | 0 |" >> "$summary"
+          fi
+          cat "$summary" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload processed chunk
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: backfill-${{ matrix.start }}-${{ matrix.end }}
+          path: |
+            data/
+            backfill-${{ matrix.start }}-${{ matrix.end }}.md
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: [prepare, process]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Download processed chunks
+        uses: actions/download-artifact@v8.0.1
+        with:
+          pattern: backfill-*
+          path: generated
+          merge-multiple: true
+
+      - name: Publish generated data
+        env:
+          LANGUAGE: ${{ vars.LANGUAGE || 'Chinese' }}
+        run: |
+          set -Eeuo pipefail
+          publish_dir=$(mktemp -d)
+          trap 'git worktree remove --force "$publish_dir" >/dev/null 2>&1 || true' EXIT
+
+          git fetch --no-tags origin data:refs/remotes/origin/data
+          git worktree add --detach "$publish_dir" origin/data
+          mkdir -p "$publish_dir/data" "$publish_dir/assets"
+          find generated/data -maxdepth 1 -type f \
+            \( -name '*.jsonl' -o -name '*.md' \) \
+            -exec cp {} "$publish_dir/data/" \;
+
+          (
+            cd "$publish_dir"
+            find data -maxdepth 1 -type f -name '*.jsonl' -printf '%f\n' | sort > assets/file-list.txt
+            git config user.name "${{ vars.NAME || github.repository_owner }}"
+            git config user.email "${{ vars.EMAIL || 'actions@github.com' }}"
+            git add data assets/file-list.txt
+            if git diff --cached --quiet; then
+              echo "No new backfill data to publish"
+            else
+              git commit -m "backfill: ${{ needs.prepare.outputs.start_date }} to ${{ needs.prepare.outputs.end_date }}"
+              git push origin HEAD:data
+            fi
+          )
+
+      - name: Workflow summary
+        run: |
+          {
+            echo "## Historical backfill published"
+            echo
+            echo "- Range: ${{ needs.prepare.outputs.start_date }} through ${{ needs.prepare.outputs.end_date }}"
+            echo "- Data branch: \`data\`"
+          } >> "$GITHUB_STEP_SUMMARY"

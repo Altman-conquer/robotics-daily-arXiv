@@ -242,7 +242,11 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
 
 def process_all_items(data: List[Dict], model_name: str, language: str, max_workers: int) -> List[Dict]:
     """并行处理所有数据项"""
-    llm = ChatOpenAI(model=model_name)
+    llm_kwargs = {"model": model_name}
+    reasoning_effort = os.environ.get("REASONING_EFFORT", "").strip()
+    if reasoning_effort:
+        llm_kwargs["reasoning_effort"] = reasoning_effort
+    llm = ChatOpenAI(**llm_kwargs)
     print('Connect to:', model_name, file=sys.stderr)
     json_instruction = (
         "Return only a valid JSON object with exactly these string fields: "

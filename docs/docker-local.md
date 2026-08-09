@@ -25,6 +25,7 @@ generated updates back to GitHub.
    - `OPENAI_API_KEY`
    - `OPENAI_BASE_URL`
    - `MODEL_NAME`
+   - `REASONING_EFFORT` (optional, for reasoning-capable models; e.g. `medium`)
    - `LANGUAGE`
    - `CATEGORIES`
    - `EMAIL`

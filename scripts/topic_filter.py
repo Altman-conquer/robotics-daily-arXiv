@@ -221,7 +221,11 @@ def main() -> int:
         ("system", SYSTEM_PROMPT),
         ("human", HUMAN_PROMPT),
     ])
-    chain = prompt | ChatOpenAI(model=model_name)
+    llm_kwargs = {"model": model_name}
+    reasoning_effort = os.environ.get("REASONING_EFFORT", "").strip()
+    if reasoning_effort:
+        llm_kwargs["reasoning_effort"] = reasoning_effort
+    chain = prompt | ChatOpenAI(**llm_kwargs)
 
     results = [None] * len(items)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:

@@ -33,6 +33,9 @@ generated updates back to GitHub.
    - `REPO_OWNER`
    - `REPO_NAME`
 
+   Machine-specific or secret overrides can instead go in `.env.docker.local`.
+   Docker Compose loads it after `.env.docker`, and Git ignores it.
+
 3. Configure push authentication.
 
    Recommended: keep `origin` as an SSH remote. This repository's

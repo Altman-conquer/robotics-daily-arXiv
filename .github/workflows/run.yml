@@ -133,12 +133,22 @@ jobs:
           esac
 
       - name: Filter for embodied AI and robotics
+        id: topic_filter
         if: steps.deduplicate.outputs.has_new_content == 'true'
         run: |
+          set +e
           uv run python scripts/topic_filter.py --data "data/${{ steps.prepare.outputs.date }}.jsonl"
+          status=$?
+          set -e
+
+          case "$status" in
+            0) echo "has_relevant_content=true" >> "$GITHUB_OUTPUT" ;;
+            2) echo "has_relevant_content=false" >> "$GITHUB_OUTPUT" ;;
+            *) echo "Topic filtering failed with exit code $status" >&2; exit "$status" ;;
+          esac
 
       - name: Generate AI paper analysis
-        if: steps.deduplicate.outputs.has_new_content == 'true'
+        if: steps.deduplicate.outputs.has_new_content == 'true' && steps.topic_filter.outputs.has_relevant_content == 'true'
         run: |
           (
             cd ai
@@ -152,7 +162,7 @@ jobs:
           }
 
       - name: Convert to Markdown
-        if: steps.deduplicate.outputs.has_new_content == 'true'
+        if: steps.deduplicate.outputs.has_new_content == 'true' && steps.topic_filter.outputs.has_relevant_content == 'true'
         run: |
           (
             cd to_md
@@ -161,7 +171,7 @@ jobs:
           )
 
       - name: Publish generated data
-        if: steps.deduplicate.outputs.has_new_content == 'true'
+        if: steps.deduplicate.outputs.has_new_content == 'true' && steps.topic_filter.outputs.has_relevant_content == 'true'
         run: |
           set -Eeuo pipefail
           today=${{ steps.prepare.outputs.date }}
@@ -211,6 +221,7 @@ jobs:
             echo "- Date: ${{ steps.prepare.outputs.date || 'not started' }}"
             echo "- Processed: ${{ steps.prepare.outputs.should_run || 'false' }}"
             echo "- New content: ${{ steps.deduplicate.outputs.has_new_content || 'false' }}"
+            echo "- Relevant content: ${{ steps.topic_filter.outputs.has_relevant_content || 'false' }}"
             echo "- Elapsed: $((elapsed / 60))m $((elapsed % 60))s"
             echo "- Model: $MODEL_NAME"
             echo "- Reasoning effort: $REASONING_EFFORT"

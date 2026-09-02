@@ -96,5 +96,16 @@ class TopicFilterParsingTest(unittest.TestCase):
         self.assertEqual(result["reason"], "generic CV")
 
 
+class TopicFilterWorkflowTest(unittest.TestCase):
+    def test_zero_relevant_papers_skip_downstream_steps_without_failure(self):
+        workflow = (SCRIPTS_DIR.parent / ".github" / "workflows" / "run.yml").read_text()
+
+        self.assertIn('2) echo "has_relevant_content=false" >> "$GITHUB_OUTPUT" ;;', workflow)
+        self.assertEqual(
+            workflow.count("steps.topic_filter.outputs.has_relevant_content == 'true'"),
+            3,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

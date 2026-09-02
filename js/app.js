@@ -241,7 +241,7 @@ function getUrlKeywords() {
 
 // 检查是否以JSON模式运行
 function isJsonMode() {
-  return getUrlCategory() !== null || getJsonParam() !== null || getUrlAuthor() !== null || getUrlKeywords() !== null;
+  return getJsonParam() !== null;
 }
 
 // 输出JSON格式的论文数据
@@ -383,6 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
   urlJsonParam = getJsonParam();
   urlAuthorParam = getUrlAuthor();
   urlKeywordsParam = getUrlKeywords();
+  currentCategory = urlCategoryParam || 'all';
 
   fetchAvailableDates().then(() => {
     if (availableDates.length > 0) {
@@ -863,9 +864,8 @@ async function loadPapersByDate(date) {
 
     renderCategoryFilter(categories);
 
-    // 如果URL中有category、json、author或keywords参数，直接返回JSON
-    const hasJsonParams = urlCategoryParam !== null || urlJsonParam !== null || urlAuthorParam !== null || urlKeywordsParam !== null;
-    if (hasJsonParams) {
+    // 只有显式json参数才返回JSON；category参数用于网页筛选。
+    if (isJsonMode()) {
       // 获取基础论文列表（按category或all）
       const targetCategory = urlCategoryParam || urlJsonParam || 'all';
       let papers = getPapersByCategory(paperData, targetCategory);
@@ -873,10 +873,8 @@ async function loadPapersByDate(date) {
       // 应用keywords和author匹配（"或"关系）
       if (urlKeywordsParam || urlAuthorParam) {
         papers = matchPapersByKeywordsOrAuthor(papers, urlKeywordsParam, urlAuthorParam);
+        papers = papers.filter(p => p.isMatched);
       }
-
-      // JSON模式：只返回匹配的论文
-      papers = papers.filter(p => p.isMatched);
 
       outputJsonData(papers, targetCategory);
       return;
@@ -1728,9 +1726,8 @@ async function loadPapersByDateRange(startDate, endDate) {
 
     renderCategoryFilter(categories);
 
-    // 如果URL中有category、json、author或keywords参数，直接返回JSON
-    const hasJsonParams = urlCategoryParam !== null || urlJsonParam !== null || urlAuthorParam !== null || urlKeywordsParam !== null;
-    if (hasJsonParams) {
+    // 只有显式json参数才返回JSON；category参数用于网页筛选。
+    if (isJsonMode()) {
       // 获取基础论文列表（按category或all）
       const targetCategory = urlCategoryParam || urlJsonParam || 'all';
       let papers = getPapersByCategory(paperData, targetCategory);
@@ -1738,10 +1735,8 @@ async function loadPapersByDateRange(startDate, endDate) {
       // 应用keywords和author匹配（"或"关系）
       if (urlKeywordsParam || urlAuthorParam) {
         papers = matchPapersByKeywordsOrAuthor(papers, urlKeywordsParam, urlAuthorParam);
+        papers = papers.filter(p => p.isMatched);
       }
-
-      // JSON模式：只返回匹配的论文
-      papers = papers.filter(p => p.isMatched);
 
       outputJsonData(papers, targetCategory);
       return;

@@ -19,23 +19,23 @@ https://altman-conquer.github.io/robotics-daily-arXiv/
 
 | 参数 | 说明 | 示例 |
 |------|------|------|
-| `category` | arXiv类别 | `cs.CV`, `cs.AI`, etc. |
+| `json` | arXiv类别，并启用JSON模式 | `cs.CV`, `cs.AI`, `all` |
 | `author` | 作者姓名 | `Smith` |
 | `keywords` | 关键词，逗号分隔 | `vision,learning` |
 
 ## 样例
 ```
-bash scripts/fetch.sh "https://altman-conquer.github.io/robotics-daily-arXiv/?category=cs.RO&author=Smith&keywords=manipulation"
+bash scripts/fetch.sh "https://altman-conquer.github.io/robotics-daily-arXiv/?json=cs.RO&author=Smith&keywords=manipulation"
 ```
 这里使用到了`fetch.sh`脚本来发送请求并处理响应数据，该脚本基于NodeJS和puppeteer环境，如果没有安装则会自动安装。你不能直接wget或curl这个url，因为它需要执行JavaScript来生成最终的JSON响应。
 
 ## 筛选逻辑
 
 ```
-category AND (keywords OR author)
+json AND (keywords OR author)
 ```
 
-- category: 硬筛选，只返回指定类别
+- json: 硬筛选指定类别，并启用JSON响应
 - keywords: 在标题和摘要中搜索
 - author: 在作者字段中搜索
 - keywords与author是"或"关系

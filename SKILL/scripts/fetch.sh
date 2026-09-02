@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 参数1: URL，参数2: 超时时间（毫秒），默认60000（1分钟）
-url=${1:-"https://altman-conquer.github.io/robotics-daily-arXiv/?category=cs.RO"}
+url=${1:-"https://altman-conquer.github.io/robotics-daily-arXiv/?json=cs.RO"}
 timeout=${2:-60000}
 
 # 检测 node 是否安装

@@ -103,8 +103,17 @@ class TopicFilterWorkflowTest(unittest.TestCase):
         self.assertIn('2) echo "has_relevant_content=false" >> "$GITHUB_OUTPUT" ;;', workflow)
         self.assertEqual(
             workflow.count("steps.topic_filter.outputs.has_relevant_content == 'true'"),
-            3,
+            4,
         )
+
+    def test_incomplete_ai_analysis_creates_an_assigned_issue(self):
+        workflow = (SCRIPTS_DIR.parent / ".github" / "workflows" / "run.yml").read_text()
+
+        self.assertIn("issues: write", workflow)
+        self.assertIn("Notify incomplete AI analysis", workflow)
+        self.assertIn('grep -c \'"tldr": "Summary generation failed"\'', workflow)
+        self.assertIn('gh issue create', workflow)
+        self.assertIn('--assignee "${{ github.repository_owner }}"', workflow)
 
 
 if __name__ == "__main__":

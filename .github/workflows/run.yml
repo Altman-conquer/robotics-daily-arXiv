@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 concurrency:
   group: embodied-ai-daily-${{ github.ref }}
@@ -210,6 +211,21 @@ jobs:
               git push origin HEAD:data
             fi
           )
+
+      - name: Notify incomplete AI analysis
+        if: steps.deduplicate.outputs.has_new_content == 'true' && steps.topic_filter.outputs.has_relevant_content == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          failed=$(grep -c '"tldr": "Summary generation failed"' \
+            "data/${{ steps.prepare.outputs.date }}_AI_enhanced_${LANGUAGE}.jsonl" || true)
+          if [ "$failed" -gt 0 ]; then
+            gh issue create \
+              --title "AI analysis incomplete: ${{ steps.prepare.outputs.date }}" \
+              --body "$failed papers exhausted all AI request retries. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              --assignee "${{ github.repository_owner }}"
+            exit 1
+          fi
 
       - name: Workflow summary
         if: always()
